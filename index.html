@@ -182,6 +182,11 @@
     </div>
     <div class="hint" id="share-hint">Camera feeds stay visible while a screen is shared, so you can watch and react at the same time.</div>
   </div>
+
+  <details style="margin-top:16px;">
+    <summary style="cursor:pointer; color:var(--muted); font-size:12px;">Debug log (tap to expand — useful if something's not connecting)</summary>
+    <pre id="debug-log" style="background:#0c0e13; border:1px solid #2a2f3d; border-radius:8px; padding:10px; font-size:11px; max-height:220px; overflow:auto; white-space:pre-wrap; color:#9fb; margin-top:6px;"></pre>
+  </details>
 </main>
 
 <script>
@@ -220,6 +225,14 @@ if (!canShareScreen) {
   shareBtn.title = 'This browser/device does not support screen sharing (common on phones). Ask your friend to share from a laptop instead.';
 }
 
+const debugLogEl = document.getElementById('debug-log');
+function log(msg) {
+  const time = new Date().toLocaleTimeString();
+  debugLogEl.textContent += `[${time}] ${msg}\n`;
+  debugLogEl.scrollTop = debugLogEl.scrollHeight;
+  console.log(msg);
+}
+
 function setStatus(text, cls) {
   statusText.textContent = text;
   statusDot.className = cls || '';
@@ -227,12 +240,23 @@ function setStatus(text, cls) {
 
 async function getLocalStream() {
   if (localStream) return localStream;
+  log('Requesting camera/mic…');
   localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+  log('Got local camera/mic stream, tracks: ' + localStream.getTracks().map(t => t.kind).join(', '));
   localVideo.srcObject = localStream;
   return localStream;
 }
 
+function watchIce(pc, label) {
+  if (!pc) return;
+  pc.oniceconnectionstatechange = () => log(`[${label}] ICE state: ${pc.iceConnectionState}`);
+  pc.onicegatheringstatechange = () => log(`[${label}] ICE gathering: ${pc.iceGatheringState}`);
+  pc.onconnectionstatechange = () => log(`[${label}] Connection state: ${pc.connectionState}`);
+  pc.onicecandidateerror = (e) => log(`[${label}] ICE candidate error: ${e.errorText || e.errorCode}`);
+}
+
 function initPeer() {
+  log('Creating peer connection to broker…');
   peer = new Peer({
     config: {
       iceServers: [
@@ -257,6 +281,7 @@ function initPeer() {
   });
 
   peer.on('open', async (id) => {
+    log('Peer broker connected. My ID: ' + id);
     if (!roomToJoin) {
       const link = `${window.location.origin}${window.location.pathname}?room=${id}`;
       shareLinkInput.value = link;
@@ -266,6 +291,7 @@ function initPeer() {
       remotePeerId = roomToJoin;
       setStatus('Connecting…', 'connecting');
       await getLocalStream();
+      log('Calling host: ' + remotePeerId);
       const outgoingCall = peer.call(remotePeerId, localStream, { metadata: { type: 'camera' } });
       handleCameraCall(outgoingCall);
     }
@@ -273,11 +299,14 @@ function initPeer() {
 
   peer.on('call', async (incomingCall) => {
     const type = incomingCall.metadata && incomingCall.metadata.type;
+    log(`Incoming call from ${incomingCall.peer}, type: ${type || 'camera'}`);
 
     if (type === 'screen') {
       remotePeerId = remotePeerId || incomingCall.peer;
       incomingCall.answer(); // one-way, we only receive
+      watchIce(incomingCall.peerConnection, 'screen-in');
       incomingCall.on('stream', (remoteScreenStream) => {
+        log('Received remote screen stream');
         screenVideo.srcObject = remoteScreenStream;
         tryPlay(screenVideo);
         screenLabel.textContent = "Friend's screen";
@@ -297,8 +326,10 @@ function initPeer() {
     handleCameraCall(incomingCall);
   });
 
+  peer.on('disconnected', () => log('Peer broker disconnected (will try to reconnect)'));
+  peer.on('close', () => log('Peer connection closed'));
   peer.on('error', (err) => {
-    console.error(err);
+    log('PEER ERROR: ' + err.type + ' — ' + (err.message || ''));
     setStatus('Connection error: ' + err.type, '');
   });
 }
@@ -322,7 +353,10 @@ autoplayBanner.addEventListener('click', () => {
 
 function handleCameraCall(c) {
   call = c;
+  log('Camera call object created, waiting for stream/ICE…');
+  watchIce(call.peerConnection, 'camera');
   call.on('stream', (remoteStream) => {
+    log('Received remote camera stream, tracks: ' + remoteStream.getTracks().map(t => t.kind).join(', '));
     remoteVideo.srcObject = remoteStream;
     tryPlay(remoteVideo);
     setStatus('Connected', 'connected');
@@ -330,10 +364,11 @@ function handleCameraCall(c) {
     callUiEl.classList.add('show');
   });
   call.on('close', () => {
+    log('Camera call closed');
     setStatus('Call ended', '');
     remoteVideo.srcObject = null;
   });
-  call.on('error', (err) => console.error(err));
+  call.on('error', (err) => log('CALL ERROR: ' + err));
 }
 
 function showScreenTile(show) {
