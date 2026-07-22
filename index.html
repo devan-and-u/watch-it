@@ -11,10 +11,10 @@
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/responsive.css">
 
-  <!-- PeerJS Library CDN -->
+  <!-- PeerJS CDN -->
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
-<body>
+<body class="theme-midnight">
   <div id="app-container">
     
     <!-- Top Header -->
@@ -27,6 +27,7 @@
       <div class="room-info-pill glass-pill" id="header-room-pill" style="display: none;">
         <span class="status-dot" id="connection-status-dot"></span>
         <span>Room: <strong class="room-id-display" id="display-room-id">----</strong></span>
+        <span class="watch-timer-pill" id="watch-timer-display" title="Watching Together Time">⏱️ 00:00:00</span>
         <button class="btn btn-secondary btn-sm" id="btn-copy-link" style="padding: 4px 10px; font-size: 12px;">
           📋 Copy Link
         </button>
@@ -36,7 +37,7 @@
         <button class="btn btn-secondary btn-icon-only" id="btn-mobile-flip-cam" title="Flip Camera (Mobile)" style="display: none;">
           🔄
         </button>
-        <button class="btn btn-secondary btn-icon-only" id="btn-toggle-chat" title="Toggle Chat & Soundboard">
+        <button class="btn btn-secondary btn-icon-only" id="btn-toggle-chat" title="Toggle Chat & Features">
           💬 <span class="badge badge-live" id="chat-unread-badge" style="display: none; position: absolute; top: -4px; right: -4px;">0</span>
         </button>
       </div>
@@ -48,7 +49,7 @@
       <canvas class="ambient-glow-canvas" id="ambient-canvas"></canvas>
 
       <div class="movie-stage">
-        <video id="mainMovieVideo" crossorigin="anonymous" playsinline></video>
+        <video id="mainMovieVideo" class="mode-contain" crossorigin="anonymous" playsinline></video>
         
         <!-- Empty Placeholder Screen when movie hasn't started -->
         <div class="placeholder-screen" id="movie-placeholder">
@@ -82,8 +83,23 @@
           </div>
 
           <div class="controls-right">
+            <!-- Speed Dropdown -->
+            <select class="select-dropdown" id="select-playback-speed" title="Playback Speed">
+              <option value="0.5">0.5x</option>
+              <option value="1" selected>1.0x</option>
+              <option value="1.25">1.25x</option>
+              <option value="1.5">1.5x</option>
+              <option value="2">2.0x</option>
+            </select>
+
+            <!-- Aspect Ratio Mode -->
+            <select class="select-dropdown" id="select-aspect-ratio" title="Aspect Ratio">
+              <option value="contain" selected>Fit</option>
+              <option value="cover">Fill Screen</option>
+            </select>
+
             <button class="btn btn-secondary btn-sm" id="btn-load-subtitles" style="font-size: 12px; padding: 4px 8px;">
-              💬 Subtitles (.vtt)
+              💬 Subtitles
             </button>
             <span class="badge badge-sync" id="remote-control-badge" style="display: none;">Remote Allowed</span>
             <button class="btn btn-secondary btn-icon-only" id="btn-player-fullscreen">⛶</button>
@@ -99,9 +115,10 @@
         <!-- Local User Webcam Card -->
         <div class="webcam-card" id="local-webcam-card">
           <video class="webcam-video" id="localWebcamVideo" autoplay muted playsinline></video>
+          <div class="audio-visualizer-bar" id="local-audio-bar"></div>
           <div class="webcam-badge">
             <span class="status-dot" id="local-mic-dot"></span>
-            <span>You</span>
+            <span id="local-display-name">You</span>
           </div>
           <div class="webcam-controls">
             <button class="webcam-btn-mini" id="btn-minimize-local" title="Minimize">_</button>
@@ -111,6 +128,7 @@
         <!-- Remote Partner Webcam Card -->
         <div class="webcam-card" id="remote-webcam-card">
           <video class="webcam-video remote-video" id="remoteWebcamVideo" autoplay playsinline></video>
+          <div class="audio-visualizer-bar" id="remote-audio-bar"></div>
           <div class="webcam-badge">
             <span class="status-dot" id="remote-mic-dot"></span>
             <span id="remote-partner-name">Partner</span>
@@ -171,11 +189,12 @@
       </div>
     </footer>
 
-    <!-- Slide-In Chat & Soundboard Sidebar -->
+    <!-- Slide-In Sidebar -->
     <aside class="side-drawer" id="side-drawer">
       <div class="drawer-tabs">
         <button class="tab-btn active" data-tab="chat">Chat</button>
         <button class="tab-btn" data-tab="soundboard">Soundboard</button>
+        <button class="tab-btn" data-tab="themes">Themes</button>
         <button class="tab-btn" data-tab="room">Room Info</button>
       </div>
 
@@ -192,7 +211,7 @@
         </div>
       </div>
 
-      <!-- Tab 2: Romantic & Movie Soundboard -->
+      <!-- Tab 2: Soundboard -->
       <div class="tab-content" id="tab-soundboard">
         <div class="soundboard-grid">
           <div class="sound-card" data-sound="popcorn">
@@ -222,13 +241,29 @@
         </div>
       </div>
 
-      <!-- Tab 3: Room Info & QR Code -->
+      <!-- Tab 3: Ambiance Themes -->
+      <div class="tab-content" id="tab-themes" style="padding: 20px; gap: 14px;">
+        <h3>Choose Ambiance Theme</h3>
+        <button class="btn btn-secondary theme-option-btn" data-theme="midnight" style="justify-content: flex-start; text-align: left;">
+          🌙 Midnight Cinema (Default)
+        </button>
+        <button class="btn btn-secondary theme-option-btn" data-theme="sunset" style="justify-content: flex-start; text-align: left;">
+          🌅 Sunset Romance
+        </button>
+        <button class="btn btn-secondary theme-option-btn" data-theme="cyberpunk" style="justify-content: flex-start; text-align: left;">
+          ⚡ Cyberpunk Date
+        </button>
+        <button class="btn btn-secondary theme-option-btn" data-theme="candlelight" style="justify-content: flex-start; text-align: left;">
+          🕯️ Candlelight Lounge
+        </button>
+      </div>
+
+      <!-- Tab 4: Room Info & QR Code -->
       <div class="tab-content" id="tab-room" style="padding: 20px; gap: 16px; align-items: center; text-align: center;">
         <h3>Room Invitation</h3>
-        <p style="font-size: 13px; color: var(--text-muted);">Scan QR code on your mobile phone or copy the link below:</p>
+        <p style="font-size: 13px; color: var(--text-muted);">Scan QR code on your mobile phone or copy link:</p>
         
         <div id="qr-code-container" style="background: #fff; padding: 12px; border-radius: var(--radius-sm);">
-          <!-- Dynamic QR Code Image -->
           <img id="qr-code-img" src="" alt="Room QR Code" style="width: 160px; height: 160px; display: block;">
         </div>
 
@@ -242,7 +277,13 @@
     <div class="lobby-overlay" id="lobby-overlay">
       <div class="lobby-card glass-panel">
         <h1 class="lobby-title"><span class="gradient-text">CineDuo</span> Date</h1>
-        <p class="lobby-subtitle">Watch local movies or share screen together with synchronized video calling for long-distance lovers.</p>
+        <p class="lobby-subtitle">Stream local movies or share screen together with synchronized video calling for long-distance lovers.</p>
+
+        <!-- Interactive Camera Test Preview in Lobby -->
+        <div class="lobby-cam-preview-box">
+          <video id="lobby-cam-video" autoplay muted playsinline></video>
+          <div class="lobby-cam-placeholder" id="lobby-cam-placeholder">📹 Camera preview loading...</div>
+        </div>
 
         <div style="display: flex; flex-direction: column; gap: 10px; text-align: left;">
           <label style="font-size: 12px; font-weight: 600; color: var(--text-muted);">Your Display Name</label>
@@ -252,6 +293,9 @@
         <div class="lobby-actions">
           <button class="btn btn-primary" id="btn-create-room" style="padding: 14px; font-size: 16px;">
             ✨ Create New Movie Date Room
+          </button>
+          <button class="btn btn-secondary" id="btn-solo-mode" style="padding: 10px; font-size: 13px;">
+            🍿 Test Player / Solo Mode Immediately
           </button>
           
           <div class="divider"><span>OR JOIN EXISTING ROOM</span></div>
@@ -270,7 +314,7 @@
 
     <!-- Intermission Snack Break Overlay -->
     <div class="intermission-overlay" id="intermission-overlay">
-      <h2 style="font-size: 32px;"><span class="gradient-text">🍿 Snack & Intermission Break</span></h2>
+      <h2 style="font-size: 34px;"><span class="gradient-text">🍿 Snack & Intermission Break</span></h2>
       <div class="intermission-clock" id="intermission-timer">05:00</div>
       <p class="intermission-quote" id="intermission-quote">"Distance means so little when someone means so much. Grab popcorn and drinks!"</p>
       <button class="btn btn-primary" id="btn-end-intermission">Resume Movie</button>
