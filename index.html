@@ -1,465 +1,293 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Watch Together</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
-<style>
-  :root {
-    --bg: #0f1115;
-    --panel: #171a21;
-    --accent: #6c8cff;
-    --text: #e8eaf0;
-    --muted: #8992a8;
-    --danger: #ff6b6b;
-    --ok: #56d69a;
-  }
-  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-  html, body {
-    margin: 0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    min-height: 100vh;
-  }
-  header {
-    padding: 14px 18px;
-    border-bottom: 1px solid #232733;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-  }
-  header h1 { font-size: 17px; margin: 0; font-weight: 600; }
-  #status-dot {
-    display: inline-block;
-    width: 8px; height: 8px;
-    border-radius: 50%;
-    background: var(--muted);
-    margin-right: 8px;
-  }
-  #status-dot.connected { background: var(--ok); }
-  #status-dot.connecting { background: #e0b04b; }
-  .status-wrap { font-size: 12px; color: var(--muted); display: flex; align-items: center; }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>CineDuo — Long Distance Movie Date & Video Call</title>
+  <meta name="description" content="Stream movies together and video call with your partner seamlessly over WebRTC. Works on mobile and desktop without backend servers.">
+  
+  <!-- CSS Stylesheets -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/responsive.css">
 
-  main {
-    max-width: 1100px;
-    margin: 0 auto;
-    padding: 16px;
-  }
-
-  #setup {
-    background: var(--panel);
-    border: 1px solid #232733;
-    border-radius: 12px;
-    padding: 24px 20px;
-    text-align: center;
-    margin-bottom: 20px;
-  }
-  #setup p { color: var(--muted); margin-top: 0; font-size: 14px; }
-  .setup-actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 14px; }
-  .link-box { display: none; margin-top: 18px; background: #10131a; border: 1px dashed #333a4d; border-radius: 8px; padding: 14px; }
-  .link-box.show { display: block; }
-  .link-row { display: flex; gap: 8px; margin-top: 8px; }
-  .link-row input {
-    flex: 1; min-width: 0;
-    background: #0c0e13; border: 1px solid #2a2f3d; color: var(--text);
-    padding: 10px 12px; border-radius: 6px; font-size: 13px;
-  }
-
-  button {
-    background: var(--accent); color: white; border: none;
-    padding: 11px 18px; border-radius: 8px; font-size: 14px; font-weight: 500;
-    cursor: pointer; transition: background 0.15s, transform 0.1s;
-    white-space: nowrap;
-  }
-  button:hover { background: #5578e8; }
-  button:active { transform: scale(0.97); }
-  button.secondary { background: #232733; color: var(--text); }
-  button.secondary:hover { background: #2c313f; }
-  button.danger { background: var(--danger); color: #1a0d0d; }
-  button:disabled { opacity: 0.4; cursor: not-allowed; }
-
-  #call-ui { display: none; }
-  #call-ui.show { display: block; }
-
-  .stage { display: flex; flex-direction: column; gap: 14px; }
-
-  .screen-tile {
-    display: none;
-    background: #000; border-radius: 12px; overflow: hidden;
-    position: relative; aspect-ratio: 16 / 9; border: 1px solid #232733;
-  }
-  .screen-tile.show { display: block; }
-  .screen-tile video { width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
-
-  .cam-row {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 14px;
-    transition: all 0.2s;
-  }
-  .stage.has-screen .cam-row {
-    grid-template-columns: repeat(auto-fit, minmax(130px, 170px));
-    justify-content: center;
-  }
-  .cam-card {
-    background: #000; border-radius: 10px; overflow: hidden; position: relative;
-    aspect-ratio: 4 / 3; border: 1px solid #232733;
-  }
-  .stage:not(.has-screen) .cam-card { aspect-ratio: 16 / 10; }
-  .cam-card video { width: 100%; height: 100%; object-fit: cover; display: block; background: #05060a; }
-  .video-label {
-    position: absolute; bottom: 8px; left: 8px;
-    background: rgba(0,0,0,0.55); padding: 3px 8px; border-radius: 6px;
-    font-size: 11px; color: #dde;
-  }
-
-  .controls {
-    display: flex; gap: 8px; justify-content: center; margin-top: 18px; flex-wrap: wrap;
-  }
-
-  .hint { text-align: center; color: var(--muted); font-size: 12px; margin-top: 14px; padding: 0 8px; }
-
-  @media (max-width: 480px) {
-    header h1 { font-size: 15px; }
-    button { padding: 10px 14px; font-size: 13px; }
-    .controls { gap: 6px; }
-  }
-</style>
+  <!-- PeerJS Library CDN -->
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
 </head>
 <body>
+  <div id="app-container">
+    
+    <!-- Top Header -->
+    <header class="app-header">
+      <a href="#" class="brand-logo">
+        <div class="brand-icon">🍿</div>
+        <span class="brand-text"><span class="gradient-text">CineDuo</span> Date</span>
+      </a>
 
-<header>
-  <h1>🎬 Watch Together</h1>
-  <div class="status-wrap"><span id="status-dot"></span><span id="status-text">Not connected</span></div>
-</header>
-
-<main>
-  <div id="setup">
-    <h2 style="margin-top:0; font-size:18px;">Start a call with your friend</h2>
-    <p>One of you creates a room and sends the link. The other just opens it — works on laptop or phone.</p>
-    <div class="setup-actions">
-      <button id="create-room-btn">Create a Room</button>
-    </div>
-    <div class="link-box" id="link-box">
-      <div style="font-size:13px;color:var(--muted);">Send this link to your friend:</div>
-      <div class="link-row">
-        <input id="share-link" readonly>
-        <button class="secondary" id="copy-btn">Copy</button>
+      <div class="room-info-pill glass-pill" id="header-room-pill" style="display: none;">
+        <span class="status-dot" id="connection-status-dot"></span>
+        <span>Room: <strong class="room-id-display" id="display-room-id">----</strong></span>
+        <button class="btn btn-secondary btn-sm" id="btn-copy-link" style="padding: 4px 10px; font-size: 12px;">
+          📋 Copy Link
+        </button>
       </div>
-      <div class="hint">Waiting for your friend to join…</div>
+
+      <div style="display: flex; gap: 8px;">
+        <button class="btn btn-secondary btn-icon-only" id="btn-mobile-flip-cam" title="Flip Camera (Mobile)" style="display: none;">
+          🔄
+        </button>
+        <button class="btn btn-secondary btn-icon-only" id="btn-toggle-chat" title="Toggle Chat & Soundboard">
+          💬 <span class="badge badge-live" id="chat-unread-badge" style="display: none; position: absolute; top: -4px; right: -4px;">0</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Theater Stage -->
+    <main class="theater-container" id="theater-stage">
+      <!-- Dynamic Ambient Backlight Glow Canvas -->
+      <canvas class="ambient-glow-canvas" id="ambient-canvas"></canvas>
+
+      <div class="movie-stage">
+        <video id="mainMovieVideo" crossorigin="anonymous" playsinline></video>
+        
+        <!-- Empty Placeholder Screen when movie hasn't started -->
+        <div class="placeholder-screen" id="movie-placeholder">
+          <div class="placeholder-icon">🎬</div>
+          <h2>Ready for Movie Night?</h2>
+          <p>Stream a local movie file from your device, or share your screen with audio.</p>
+          <div style="display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-top: 10px;">
+            <button class="btn btn-primary" id="btn-placeholder-select-file">
+              📁 Choose Local Movie File
+            </button>
+            <button class="btn btn-purple" id="btn-placeholder-screen-share">
+              🖥️ Share Screen with Audio
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom Movie Player Controls Bar Overlay -->
+      <div class="player-controls-overlay" id="player-controls">
+        <div class="progress-bar-container" id="progress-bar">
+          <div class="progress-bar-filled" id="progress-fill"></div>
+        </div>
+        <div class="controls-row">
+          <div class="controls-left">
+            <button class="btn btn-secondary btn-icon-only" id="btn-play-pause">▶️</button>
+            <span class="time-display" id="time-display">00:00 / 00:00</span>
+            <div class="volume-container">
+              <span id="volume-icon">🔊</span>
+              <input type="range" class="volume-slider" id="volume-slider" min="0" max="1" step="0.05" value="1">
+            </div>
+          </div>
+
+          <div class="controls-right">
+            <button class="btn btn-secondary btn-sm" id="btn-load-subtitles" style="font-size: 12px; padding: 4px 8px;">
+              💬 Subtitles (.vtt)
+            </button>
+            <span class="badge badge-sync" id="remote-control-badge" style="display: none;">Remote Allowed</span>
+            <button class="btn btn-secondary btn-icon-only" id="btn-player-fullscreen">⛶</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Canvas Overlay for Floating Emojis / Particle Effects -->
+      <canvas id="reaction-canvas"></canvas>
+
+      <!-- Floating Webcams Layer (Always Visible Over Movie) -->
+      <div class="webcam-floating-layer">
+        <!-- Local User Webcam Card -->
+        <div class="webcam-card" id="local-webcam-card">
+          <video class="webcam-video" id="localWebcamVideo" autoplay muted playsinline></video>
+          <div class="webcam-badge">
+            <span class="status-dot" id="local-mic-dot"></span>
+            <span>You</span>
+          </div>
+          <div class="webcam-controls">
+            <button class="webcam-btn-mini" id="btn-minimize-local" title="Minimize">_</button>
+          </div>
+        </div>
+
+        <!-- Remote Partner Webcam Card -->
+        <div class="webcam-card" id="remote-webcam-card">
+          <video class="webcam-video remote-video" id="remoteWebcamVideo" autoplay playsinline></video>
+          <div class="webcam-badge">
+            <span class="status-dot" id="remote-mic-dot"></span>
+            <span id="remote-partner-name">Partner</span>
+          </div>
+          <div class="webcam-controls">
+            <button class="webcam-btn-mini" id="btn-minimize-remote" title="Minimize">_</button>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <!-- Main Control Bar -->
+    <footer class="main-control-bar">
+      <!-- Media Toggles -->
+      <div class="control-group">
+        <button class="ctrl-btn" id="btn-toggle-mic" title="Microphone On/Off">
+          🎤
+          <span class="ctrl-btn-label">Mic</span>
+        </button>
+        <button class="ctrl-btn" id="btn-toggle-cam" title="Camera On/Off">
+          📹
+          <span class="ctrl-btn-label">Camera</span>
+        </button>
+      </div>
+
+      <!-- Movie & Sharing Controls -->
+      <div class="control-group">
+        <button class="ctrl-btn" id="btn-stream-local-file" title="Stream Local Movie File">
+          📁
+          <span class="ctrl-btn-label">Stream Movie</span>
+        </button>
+        <button class="ctrl-btn" id="btn-screen-share" title="Share Screen with Audio">
+          🖥️
+          <span class="ctrl-btn-label">Screen Share</span>
+        </button>
+
+        <!-- Quick Emoji Reaction Bar -->
+        <div class="emoji-picker-pill">
+          <button class="emoji-btn" data-emoji="❤️">❤️</button>
+          <button class="emoji-btn" data-emoji="🍿">🍿</button>
+          <button class="emoji-btn" data-emoji="😂">😂</button>
+          <button class="emoji-btn" data-emoji="😭">😭</button>
+          <button class="emoji-btn" data-emoji="🔥">🔥</button>
+          <button class="emoji-btn" data-emoji="✨">✨</button>
+        </div>
+      </div>
+
+      <!-- Features & Room Utilities -->
+      <div class="control-group">
+        <button class="ctrl-btn" id="btn-pass-remote" title="Allow Partner to Control Playback">
+          🕹️
+          <span class="ctrl-btn-label">Pass Remote</span>
+        </button>
+        <button class="ctrl-btn" id="btn-intermission" title="Start Intermission / Snack Break">
+          ⏳
+          <span class="ctrl-btn-label">Intermission</span>
+        </button>
+      </div>
+    </footer>
+
+    <!-- Slide-In Chat & Soundboard Sidebar -->
+    <aside class="side-drawer" id="side-drawer">
+      <div class="drawer-tabs">
+        <button class="tab-btn active" data-tab="chat">Chat</button>
+        <button class="tab-btn" data-tab="soundboard">Soundboard</button>
+        <button class="tab-btn" data-tab="room">Room Info</button>
+      </div>
+
+      <!-- Tab 1: Chat -->
+      <div class="tab-content active" id="tab-chat">
+        <div class="chat-messages" id="chat-messages">
+          <div class="chat-bubble remote" style="align-self: center; background: rgba(255,255,255,0.05); text-align: center;">
+            Welcome to CineDuo! Share your Room ID or Link to invite your partner. 🍿
+          </div>
+        </div>
+        <div class="chat-input-bar">
+          <input type="text" class="lobby-input" id="chat-input" placeholder="Type a message..." style="font-size: 13px;">
+          <button class="btn btn-primary" id="btn-send-chat" style="padding: 8px 14px;">Send</button>
+        </div>
+      </div>
+
+      <!-- Tab 2: Romantic & Movie Soundboard -->
+      <div class="tab-content" id="tab-soundboard">
+        <div class="soundboard-grid">
+          <div class="sound-card" data-sound="popcorn">
+            <span class="sound-icon">🍿</span>
+            <span class="sound-title">Popcorn Crunch</span>
+          </div>
+          <div class="sound-card" data-sound="gasp">
+            <span class="sound-icon">😱</span>
+            <span class="sound-title">Drama Gasp</span>
+          </div>
+          <div class="sound-card" data-sound="applause">
+            <span class="sound-icon">👏</span>
+            <span class="sound-title">Applause</span>
+          </div>
+          <div class="sound-card" data-sound="chime">
+            <span class="sound-icon">💖</span>
+            <span class="sound-title">Romantic Chime</span>
+          </div>
+          <div class="sound-card" data-sound="kiss">
+            <span class="sound-icon">💋</span>
+            <span class="sound-title">Sweet Kiss</span>
+          </div>
+          <div class="sound-card" data-sound="fanfare">
+            <span class="sound-icon">🎉</span>
+            <span class="sound-title">Fanfare</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 3: Room Info & QR Code -->
+      <div class="tab-content" id="tab-room" style="padding: 20px; gap: 16px; align-items: center; text-align: center;">
+        <h3>Room Invitation</h3>
+        <p style="font-size: 13px; color: var(--text-muted);">Scan QR code on your mobile phone or copy the link below:</p>
+        
+        <div id="qr-code-container" style="background: #fff; padding: 12px; border-radius: var(--radius-sm);">
+          <!-- Dynamic QR Code Image -->
+          <img id="qr-code-img" src="" alt="Room QR Code" style="width: 160px; height: 160px; display: block;">
+        </div>
+
+        <button class="btn btn-primary" id="btn-copy-room-link-full" style="width: 100%;">
+          📋 Copy Date Link
+        </button>
+      </div>
+    </aside>
+
+    <!-- Lobby / Welcome Screen Overlay -->
+    <div class="lobby-overlay" id="lobby-overlay">
+      <div class="lobby-card glass-panel">
+        <h1 class="lobby-title"><span class="gradient-text">CineDuo</span> Date</h1>
+        <p class="lobby-subtitle">Watch local movies or share screen together with synchronized video calling for long-distance lovers.</p>
+
+        <div style="display: flex; flex-direction: column; gap: 10px; text-align: left;">
+          <label style="font-size: 12px; font-weight: 600; color: var(--text-muted);">Your Display Name</label>
+          <input type="text" class="lobby-input" id="user-display-name" placeholder="Enter your name..." value="Sweetheart">
+        </div>
+
+        <div class="lobby-actions">
+          <button class="btn btn-primary" id="btn-create-room" style="padding: 14px; font-size: 16px;">
+            ✨ Create New Movie Date Room
+          </button>
+          
+          <div class="divider"><span>OR JOIN EXISTING ROOM</span></div>
+
+          <div class="lobby-input-group">
+            <input type="text" class="lobby-input" id="input-room-id" placeholder="Enter Room ID (e.g. cineduo-xyz123)">
+            <button class="btn btn-purple" id="btn-join-room">Join Date</button>
+          </div>
+        </div>
+
+        <p style="font-size: 11px; color: var(--text-dim);">
+          🔒 Powered by WebRTC end-to-end peer connections. 100% private & static GitHub Pages ready.
+        </p>
+      </div>
     </div>
+
+    <!-- Intermission Snack Break Overlay -->
+    <div class="intermission-overlay" id="intermission-overlay">
+      <h2 style="font-size: 32px;"><span class="gradient-text">🍿 Snack & Intermission Break</span></h2>
+      <div class="intermission-clock" id="intermission-timer">05:00</div>
+      <p class="intermission-quote" id="intermission-quote">"Distance means so little when someone means so much. Grab popcorn and drinks!"</p>
+      <button class="btn btn-primary" id="btn-end-intermission">Resume Movie</button>
+    </div>
+
+    <!-- Hidden File Inputs -->
+    <input type="file" id="localMovieInput" accept="video/*" style="display: none;">
+    <input type="file" id="subtitlesInput" accept=".vtt,.srt" style="display: none;">
+
   </div>
 
-  <div id="call-ui">
-    <div class="stage" id="stage">
-      <div class="screen-tile" id="screen-tile">
-        <video id="screen-video" autoplay playsinline></video>
-        <div class="video-label" id="screen-label">Screen share</div>
-      </div>
-      <div class="cam-row">
-        <div class="cam-card">
-          <video id="local-video" autoplay muted playsinline></video>
-          <div class="video-label">You</div>
-        </div>
-        <div class="cam-card">
-          <video id="remote-video" autoplay playsinline></video>
-          <div class="video-label">Friend</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="hint" id="autoplay-banner" style="display:none; cursor:pointer; background:#e0b04b; color:#1a1200; padding:10px; border-radius:8px; font-weight:600;">
-      ▶️ Tap here to start video/audio
-    </div>
-
-    <div class="controls">
-      <button class="secondary" id="mic-btn">🎤 Mute</button>
-      <button class="secondary" id="cam-btn">📷 Camera Off</button>
-      <button id="share-btn">🖥️ Share Screen</button>
-      <button class="danger" id="hangup-btn">End Call</button>
-    </div>
-    <div class="hint" id="share-hint">Camera feeds stay visible while a screen is shared, so you can watch and react at the same time.</div>
-  </div>
-
-  <details style="margin-top:16px;">
-    <summary style="cursor:pointer; color:var(--muted); font-size:12px;">Debug log (tap to expand — useful if something's not connecting)</summary>
-    <pre id="debug-log" style="background:#0c0e13; border:1px solid #2a2f3d; border-radius:8px; padding:10px; font-size:11px; max-height:220px; overflow:auto; white-space:pre-wrap; color:#9fb; margin-top:6px;"></pre>
-  </details>
-</main>
-
-<script>
-const params = new URLSearchParams(window.location.search);
-const roomToJoin = params.get('room');
-
-let peer = null;
-let call = null;          // camera <-> camera call
-let screenCall = null;    // one-way call carrying a screen-share stream
-let remotePeerId = null;
-let localStream = null;
-let micEnabled = true;
-let camEnabled = true;
-let sharingScreen = false;
-let localScreenStream = null;
-
-const canShareScreen = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia);
-
-const statusDot = document.getElementById('status-dot');
-const statusText = document.getElementById('status-text');
-const setupEl = document.getElementById('setup');
-const callUiEl = document.getElementById('call-ui');
-const linkBox = document.getElementById('link-box');
-const shareLinkInput = document.getElementById('share-link');
-const localVideo = document.getElementById('local-video');
-const remoteVideo = document.getElementById('remote-video');
-const stageEl = document.getElementById('stage');
-const screenTile = document.getElementById('screen-tile');
-const screenVideo = document.getElementById('screen-video');
-const screenLabel = document.getElementById('screen-label');
-const shareBtn = document.getElementById('share-btn');
-
-if (!canShareScreen) {
-  shareBtn.disabled = true;
-  shareBtn.textContent = '🖥️ Screen share unavailable';
-  shareBtn.title = 'This browser/device does not support screen sharing (common on phones). Ask your friend to share from a laptop instead.';
-}
-
-const debugLogEl = document.getElementById('debug-log');
-function log(msg) {
-  const time = new Date().toLocaleTimeString();
-  debugLogEl.textContent += `[${time}] ${msg}\n`;
-  debugLogEl.scrollTop = debugLogEl.scrollHeight;
-  console.log(msg);
-}
-
-function setStatus(text, cls) {
-  statusText.textContent = text;
-  statusDot.className = cls || '';
-}
-
-async function getLocalStream() {
-  if (localStream) return localStream;
-  log('Requesting camera/mic…');
-  localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-  log('Got local camera/mic stream, tracks: ' + localStream.getTracks().map(t => t.kind).join(', '));
-  localVideo.srcObject = localStream;
-  return localStream;
-}
-
-function watchIce(pc, label) {
-  if (!pc) return;
-  pc.oniceconnectionstatechange = () => log(`[${label}] ICE state: ${pc.iceConnectionState}`);
-  pc.onicegatheringstatechange = () => log(`[${label}] ICE gathering: ${pc.iceGatheringState}`);
-  pc.onconnectionstatechange = () => log(`[${label}] Connection state: ${pc.connectionState}`);
-  pc.onicecandidateerror = (e) => log(`[${label}] ICE candidate error: ${e.errorText || e.errorCode}`);
-}
-
-const METERED_API_KEY = '84c9fd75202075c602a6fc117b0e06e348c4';
-const METERED_TURN_URL = `https://watch-it.metered.live/api/v1/turn/credentials?apiKey=${METERED_API_KEY}`;
-
-async function getIceServers() {
-  try {
-    log('Fetching TURN credentials from Metered…');
-    const res = await fetch(METERED_TURN_URL);
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const servers = await res.json();
-    log('Got ' + servers.length + ' ICE servers from Metered');
-    return servers;
-  } catch (err) {
-    log('Failed to fetch Metered TURN credentials, falling back to STUN only: ' + err);
-    return [{ urls: 'stun:stun.l.google.com:19302' }];
-  }
-}
-
-async function initPeer() {
-  log('Creating peer connection to broker…');
-  const iceServers = await getIceServers();
-  peer = new Peer({
-    config: { iceServers }
-  });
-
-  peer.on('open', async (id) => {
-    log('Peer broker connected. My ID: ' + id);
-    if (!roomToJoin) {
-      const link = `${window.location.origin}${window.location.pathname}?room=${id}`;
-      shareLinkInput.value = link;
-      linkBox.classList.add('show');
-      setStatus('Room created — waiting for friend', 'connecting');
-    } else {
-      remotePeerId = roomToJoin;
-      setStatus('Connecting…', 'connecting');
-      await getLocalStream();
-      log('Calling host: ' + remotePeerId);
-      const outgoingCall = peer.call(remotePeerId, localStream, { metadata: { type: 'camera' } });
-      handleCameraCall(outgoingCall);
-    }
-  });
-
-  peer.on('call', async (incomingCall) => {
-    const type = incomingCall.metadata && incomingCall.metadata.type;
-    log(`Incoming call from ${incomingCall.peer}, type: ${type || 'camera'}`);
-
-    if (type === 'screen') {
-      remotePeerId = remotePeerId || incomingCall.peer;
-      incomingCall.answer(); // one-way, we only receive
-      watchIce(incomingCall.peerConnection, 'screen-in');
-      incomingCall.on('stream', (remoteScreenStream) => {
-        log('Received remote screen stream');
-        screenVideo.srcObject = remoteScreenStream;
-        tryPlay(screenVideo);
-        screenLabel.textContent = "Friend's screen";
-        showScreenTile(true);
-      });
-      incomingCall.on('close', () => {
-        if (!sharingScreen) showScreenTile(false);
-      });
-      return;
-    }
-
-    // camera call
-    remotePeerId = incomingCall.peer;
-    setStatus('Friend joining…', 'connecting');
-    await getLocalStream();
-    incomingCall.answer(localStream, { metadata: { type: 'camera' } });
-    handleCameraCall(incomingCall);
-  });
-
-  peer.on('disconnected', () => log('Peer broker disconnected (will try to reconnect)'));
-  peer.on('close', () => log('Peer connection closed'));
-  peer.on('error', (err) => {
-    log('PEER ERROR: ' + err.type + ' — ' + (err.message || ''));
-    setStatus('Connection error: ' + err.type, '');
-  });
-}
-
-const autoplayBanner = document.getElementById('autoplay-banner');
-
-function tryPlay(videoEl) {
-  const p = videoEl.play();
-  if (p && p.catch) {
-    p.catch(() => {
-      autoplayBanner.style.display = 'block';
-    });
-  }
-}
-
-autoplayBanner.addEventListener('click', () => {
-  tryPlay(remoteVideo);
-  tryPlay(screenVideo);
-  autoplayBanner.style.display = 'none';
-});
-
-function handleCameraCall(c) {
-  call = c;
-  log('Camera call object created, waiting for stream/ICE…');
-  watchIce(call.peerConnection, 'camera');
-  call.on('stream', (remoteStream) => {
-    log('Received remote camera stream, tracks: ' + remoteStream.getTracks().map(t => t.kind).join(', '));
-    remoteVideo.srcObject = remoteStream;
-    tryPlay(remoteVideo);
-    setStatus('Connected', 'connected');
-    setupEl.style.display = 'none';
-    callUiEl.classList.add('show');
-  });
-  call.on('close', () => {
-    log('Camera call closed');
-    setStatus('Call ended', '');
-    remoteVideo.srcObject = null;
-  });
-  call.on('error', (err) => log('CALL ERROR: ' + err));
-}
-
-function showScreenTile(show) {
-  screenTile.classList.toggle('show', show);
-  stageEl.classList.toggle('has-screen', show);
-}
-
-document.getElementById('create-room-btn').addEventListener('click', () => {
-  document.getElementById('create-room-btn').disabled = true;
-  initPeer();
-});
-
-document.getElementById('copy-btn').addEventListener('click', () => {
-  shareLinkInput.select();
-  document.execCommand('copy');
-  const btn = document.getElementById('copy-btn');
-  btn.textContent = 'Copied!';
-  setTimeout(() => btn.textContent = 'Copy', 1500);
-});
-
-document.getElementById('mic-btn').addEventListener('click', () => {
-  micEnabled = !micEnabled;
-  localStream.getAudioTracks().forEach(t => t.enabled = micEnabled);
-  document.getElementById('mic-btn').textContent = micEnabled ? '🎤 Mute' : '🔇 Unmute';
-});
-
-document.getElementById('cam-btn').addEventListener('click', () => {
-  camEnabled = !camEnabled;
-  localStream.getVideoTracks().forEach(t => t.enabled = camEnabled);
-  document.getElementById('cam-btn').textContent = camEnabled ? '📷 Camera Off' : '📷 Camera On';
-});
-
-shareBtn.addEventListener('click', async () => {
-  if (!canShareScreen) return;
-
-  if (!sharingScreen) {
-    try {
-      localScreenStream = await navigator.mediaDevices.getDisplayMedia({
-        video: { frameRate: { ideal: 15, max: 20 }, width: { ideal: 1280 }, height: { ideal: 720 } },
-        audio: true
-      });
-      sharingScreen = true;
-      shareBtn.textContent = '🛑 Stop Sharing';
-
-      // Show it on our own side too, as its own tile (camera stays visible)
-      screenVideo.srcObject = localScreenStream;
-      screenLabel.textContent = 'Your screen';
-      showScreenTile(true);
-
-      if (remotePeerId) {
-        screenCall = peer.call(remotePeerId, localScreenStream, { metadata: { type: 'screen' } });
-      }
-
-      const screenTrack = localScreenStream.getVideoTracks()[0];
-      screenTrack.onended = stopScreenShare;
-    } catch (err) {
-      console.error('Screen share cancelled or failed', err);
-    }
-  } else {
-    stopScreenShare();
-  }
-});
-
-function stopScreenShare() {
-  if (localScreenStream) {
-    localScreenStream.getTracks().forEach(t => t.stop());
-    localScreenStream = null;
-  }
-  if (screenCall) {
-    screenCall.close();
-    screenCall = null;
-  }
-  sharingScreen = false;
-  shareBtn.textContent = '🖥️ Share Screen';
-  screenVideo.srcObject = null;
-  showScreenTile(false);
-}
-
-document.getElementById('hangup-btn').addEventListener('click', () => {
-  if (call) call.close();
-  if (screenCall) screenCall.close();
-  if (localScreenStream) localScreenStream.getTracks().forEach(t => t.stop());
-  if (peer) peer.destroy();
-  if (localStream) localStream.getTracks().forEach(t => t.stop());
-  window.location.href = window.location.pathname;
-});
-
-if (roomToJoin) {
-  setStatus('Connecting…', 'connecting');
-  initPeer();
-}
-</script>
-
+  <!-- Application Logic Modules -->
+  <script src="js/soundboard.js"></script>
+  <script src="js/chat.js"></script>
+  <script src="js/webcam.js"></script>
+  <script src="js/player.js"></script>
+  <script src="js/webrtc.js"></script>
+  <script src="js/app.js"></script>
 </body>
 </html>
